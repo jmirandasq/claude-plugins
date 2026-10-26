@@ -15,6 +15,11 @@ const LIMITS: SessionRateLimit[] = [
 function world (on: On, rateLimits: SessionRateLimit[] = LIMITS) {
   const clock = mock.clock(on, { now: NOW })
   const store: Record<string, unknown> = {}
+  const pinned: Array<string | undefined> = []
+  on('ui.status', ($, e) => {
+    pinned.push(e.text)
+    return { value: undefined } as never
+  })
   on('store.get', ($, e) => ({ value: store[e.key] }))
   on('store.set', ($, e) => {
     store[e.key] = JSON.parse(JSON.stringify(e.value))
@@ -25,9 +30,11 @@ function world (on: On, rateLimits: SessionRateLimit[] = LIMITS) {
   on('session.measure', ($, e) => ({ changed: e.changed }))
   on('ui.render', ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
-    return 'hint' in e.props ? <Text>{e.props.hint}</Text> : <Box key="engine" />
+    return 'hint' in e.props
+      ? <Text>{[e.props.hint, 'tail' in e.props ? e.props.tail : undefined].filter(Boolean).join(' | ')}</Text>
+      : <Box key="engine" />
   })
-  return { clock, store }
+  return { clock, store, pinned }
 }
 
 const startSession = ($: Engine) => $.session.start({ cwd: '/project', surface: 'terminal', isInteractive: true })
@@ -121,4 +128,37 @@ test('draws the bar in the accent color the options choose', { options: { accent
   await startSession($)
   const ui = await footer($)
   expect((await ui.find({ type: 'Text', text: '━━━━━━' }))?.props.color).toBe('autoAccept')
+})
+
+const band = ($: Engine) =>
+  $.ui.mount({ plugin: 'usage-meter', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false } as never })
+
+test('in the band, draws the meter above the prompt and leaves the footer', { options: { position: 'above' } }, async ($, on) => {
+  world(on)
+  await startSession($)
+  expect(await (await band($)).find({ type: 'Text', text: ' 58%' })).toBeDefined()
+  expect(await (await footer($)).find({ type: 'Text', text: ' 58%' })).toBeUndefined()
+})
+
+test('in the hint, adds the meter as plain text after the hints', { options: { position: 'hint' } }, async ($, on) => {
+  world(on)
+  await startSession($)
+  const ui = await hint($, '? for shortcuts')
+  expect(await ui.find({ type: 'Text', text: '? for shortcuts | 5h ━━━━━━──── 58% · 2h 10m' })).toBeDefined()
+})
+
+test('in the hint, joins the meter to a hint without the cycle hint', { options: { position: 'hint' } }, async ($, on) => {
+  world(on)
+  await startSession($)
+  const ui = await hint($, '(shift+tab to cycle) · ← for agents')
+  expect(await ui.find({ type: 'Text', text: '← for agents · 5h ━━━━━━──── 58% · 2h 10m' })).toBeDefined()
+})
+
+test('in the status line, pins the meter and takes turns with the weekly window', { options: { position: 'status' } }, async ($, on) => {
+  const w = world(on)
+  await startSession($)
+  expect(w.pinned.at(-1)).toBe('5h ━━━━━━──── 58% · 2h 10m')
+  await w.clock.advance(8000)
+  expect(w.pinned.at(-1)).toBe('week ━━──────── 24% · 3d 4h')
+  expect(await (await footer($)).find({ type: 'Text', text: ' 58%' })).toBeUndefined()
 })

@@ -1,6 +1,6 @@
 # Session Info
 
-Mod de Claude Code que muestra el proyecto, la rama de git, el modelo y el uso del contexto en una sola línea, en la banda sobre el prompt.
+Mod de Claude Code que muestra el proyecto, la rama de git, el modelo y el uso del contexto en una sola línea, por defecto en la banda sobre el prompt.
 
 ```text
 claude-plugins · main · sonnet-5-5 · ━━━━────── 42%
@@ -17,7 +17,7 @@ claude-plugins · main · sonnet-5-5 · ━━━━────── 42%
 
 La rama y el modelo se actualizan cada 5 segundos. El contexto se actualiza tras cada respuesta, y no aparece hasta que hay una.
 
-La banda cede el sitio a las encuestas de Claude Code y se puede colapsar con ctrl+x ctrl+a.
+En la banda, el plugin cede el sitio a las encuestas de Claude Code y se puede colapsar con ctrl+x ctrl+a.
 
 ## Configuración
 
@@ -26,6 +26,7 @@ Todo se cambia en `/config`. Cada pieza se puede apagar:
 | Opción | Por defecto |
 |---|---|
 | `accentColor` | `green` |
+| `position` | `above` |
 | `showProject` | Activada |
 | `showBranch` | Activada |
 | `showModel` | Activada |
@@ -40,6 +41,19 @@ Todo se cambia en `/config`. Cada pieza se puede apagar:
 3. Elige `green`, `orange`, `blue`, `purple` o `teal`.
 
 El cambio se ve al momento: el plugin se recarga solo con el color nuevo, en el nombre del proyecto y en la barra de contexto.
+
+### Cambiar la posición
+
+En `/config`, la fila **Position** del plugin:
+
+| Valor | Dónde aparece |
+|---|---|
+| `above` | En la banda encima del prompt. |
+| `footer` | En la línea bajo el prompt, a la derecha, después del modo de permisos. |
+| `hint` | Al final de las ayudas bajo el prompt (`? for shortcuts`). |
+| `status` | En una línea fija bajo el prompt, junto a los avisos de Claude Code. |
+
+En `hint` y `status` se muestra solo texto, sin colores: la barra y el porcentaje se ven igual, pero sin el color de acento ni el amarillo y rojo. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
 
 ## Instalación
 

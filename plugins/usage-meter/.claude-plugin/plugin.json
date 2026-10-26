@@ -1,6 +1,6 @@
 {
   "name": "usage-meter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Claude Code subscription usage at the bottom right: the 5-hour and weekly windows.",
   "author": {
     "name": "jmirandasq"
@@ -15,6 +15,13 @@
       "description": "Color of the usage bar below 75%.",
       "options": ["green", "orange", "blue", "purple", "teal"],
       "default": "green"
+    },
+    "position": {
+      "type": "string",
+      "title": "Position",
+      "description": "Where it shows: above (the band above the prompt), footer (right of the line under the prompt), hint (end of the hints under the prompt) or status (a pinned line under the prompt). hint and status show plain text, without colors.",
+      "options": ["above", "footer", "hint", "status"],
+      "default": "footer"
     },
     "hideCycleHint": {
       "type": "boolean",

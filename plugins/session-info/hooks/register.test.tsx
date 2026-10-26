@@ -8,7 +8,7 @@ type Git = Record<string, { exitCode: number; stdout: string }>
 /** Everything beneath the mod: the clock, the session's directory and model, git, its usage and what the engine draws. */
 function world (on: On, git: Git, context: SessionContextUsage = { window: 200_000, percent: 42 }) {
   const clock = mock.clock(on, { now: Date.parse('2026-10-20T10:00:00Z') })
-  const state = { git, model: 'claude-sonnet-5-5-20260101', context }
+  const state = { git: { ...git }, model: 'claude-sonnet-5-5-20260101', context, pinned: [] as Array<string | undefined> }
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.cwd', () => ({ value: '/work/claude-plugins' }))
   on('session.root', () => ({ value: '/work/claude-plugins' }))
@@ -19,9 +19,13 @@ function world (on: On, git: Git, context: SessionContextUsage = { window: 200_0
     const out = state.git[e.argv.slice(1).join(' ')] ?? { exitCode: 128, stdout: '' }
     return { value: { ...out, stderr: '' } as never }
   })
+  on('ui.status', ($, e) => {
+    state.pinned.push(e.text)
+    return { value: undefined } as never
+  })
   on('ui.render', ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
-    return 'hint' in e.props ? <Text>{e.props.hint}</Text> : <Box key="engine" />
+    return 'hint' in e.props ? <Text>{`${e.props.hint}|${('tail' in e.props && e.props.tail) || ''}`}</Text> : <Box key="engine" />
   })
   return { clock, state }
 }
@@ -29,8 +33,8 @@ function world (on: On, git: Git, context: SessionContextUsage = { window: 200_0
 const MAIN: Git = { 'branch --show-current': { exitCode: 0, stdout: 'main\n' } }
 const startSession = ($: Engine) => $.session.start({ cwd: '/work/claude-plugins', surface: 'terminal', isInteractive: true })
 const footer = ($: Engine) =>
-  $.ui.mount({ plugin: 'session-info', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false } })
-const has = async (ui: Awaited<ReturnType<typeof footer>>, text: string) => (await ui.find({ type: 'Text', text })) !== undefined
+  $.ui.mount({ plugin: 'session-info', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false } as never })
+const has = async (ui: Pick<Awaited<ReturnType<typeof footer>>, 'find'>, text: string) => (await ui.find({ type: 'Text', text })) !== undefined
 
 test('shows the project, branch, model and context', async ($, on) => {
   world(on, MAIN)
@@ -104,4 +108,33 @@ test('draws them in the accent color the options choose', { options: { accentCol
   const ui = await footer($)
   expect((await ui.find({ type: 'Text', text: 'claude-plugins' }))?.props.color).toBe('suggestion')
   expect((await ui.find({ type: 'Text', text: '━━━━' }))?.props.color).toBe('suggestion')
+})
+
+const mountAt = ($: Engine, component: 'SessionMode' | 'PromptHint', props: Record<string, unknown>) =>
+  $.ui.mount({ plugin: 'session-info', surface: 'terminal', component, props } as never)
+
+test('in the footer, draws the info after the mode labels and leaves the band', { options: { position: 'footer' } }, async ($, on) => {
+  world(on, MAIN)
+  await startSession($)
+  const ui = await mountAt($, 'SessionMode', { modes: ['focus'] })
+  expect(await ui.find({ key: 'engine' })).toBeDefined()
+  expect(await has(ui, 'claude-plugins')).toBe(true)
+  expect(await has(ui, ' 42%')).toBe(true)
+  expect(await has(await footer($), 'claude-plugins')).toBe(false)
+})
+
+test('in the hint, adds the info as plain text after the hints', { options: { position: 'hint' } }, async ($, on) => {
+  world(on, MAIN)
+  await startSession($)
+  const ui = await mountAt($, 'PromptHint', { isDraft: false, isWorking: false, hint: '? for shortcuts' })
+  expect(await has(ui, '? for shortcuts|claude-plugins · main · sonnet-5-5 · ━━━━────── 42%')).toBe(true)
+})
+
+test('in the status line, pins the info as plain text and follows it', { options: { position: 'status' } }, async ($, on) => {
+  const { pinned } = world(on, MAIN).state
+  await startSession($)
+  expect(pinned.at(-1)).toBe('claude-plugins · main · sonnet-5-5 · ━━━━────── 42%')
+  await $.session.measure({ context: { window: 200_000, percent: 91 }, rateLimits: [], changed: ['context'] })
+  expect(pinned.at(-1)).toBe('claude-plugins · main · sonnet-5-5 · ━━━━━━━━━─ 91%')
+  expect(await has(await footer($), 'claude-plugins')).toBe(false)
 })

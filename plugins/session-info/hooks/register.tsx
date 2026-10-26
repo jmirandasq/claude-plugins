@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, Register, RenderChildren } from 'claude-code'
 
 import type { Info } from '../types'
 
@@ -8,8 +8,9 @@ const info = atom({ plugin: 'session-info', key: 'info' } as const, null as Info
 const REFRESH_MS = 5000
 
 /** The accentColor choices: the brand green as is, the rest as theme keys so they follow the person's theme. */
+const DEFAULT_ACCENT = '#00A859'
 const ACCENTS: Record<string, string> = {
-  green: '#00A859',
+  green: DEFAULT_ACCENT,
   orange: 'claude',
   blue: 'suggestion',
   purple: 'autoAccept',
@@ -62,52 +63,143 @@ async function setContext ($: EngineInterface, percent: number | undefined) {
   await update($, info, () => ({ ...current, contextPercent: percent }))
 }
 
+/** Where the line goes: the band above the prompt, the footer's right side, the hint line's end, or a pinned status line. */
+type Position = 'above' | 'footer' | 'hint' | 'status'
+const POSITIONS: readonly string[] = ['above', 'footer', 'hint', 'status']
+
+/** What the options turn on, and in which color. */
+type View = { showProject: boolean; showBranch: boolean; showModel: boolean; showContext: boolean; accent: string }
+
+type Piece = { key: string; text: string; style: Record<string, string | boolean> }
+
+/** Whether a tree beneath draws any text of its own (a plugin's), as opposed to the engine's empty slot. */
+const hasText = (node: unknown): boolean =>
+  typeof node === 'string' ? node.trim() !== ''
+    : Array.isArray(node) ? node.some(hasText)
+      : typeof node === 'object' && node !== null && hasText((node as { children?: unknown }).children)
+
+/** The pieces the options leave on, in order; the context fill kept apart for its colors. */
+function piecesOf (found: Info, view: View) {
+  const pieces: Piece[] = []
+  if (view.showProject && found.project) pieces.push({ key: 'project', text: found.project, style: { bold: true, color: view.accent } })
+  if (view.showBranch && found.branch) pieces.push({ key: 'branch', text: found.branch, style: { italic: true, dimColor: true } })
+  if (view.showModel && found.model) pieces.push({ key: 'model', text: found.model, style: { color: 'claude' } })
+  const percent = view.showContext && found.contextPercent !== undefined ? Math.min(Math.max(found.contextPercent, 0), 100) : undefined
+  return { pieces, percent }
+}
+
+/** "claude-plugins · main · sonnet-5-5 · ━━━━────── 42%": the line as plain text, for the hint and the status line. */
+function lineOf (found: Info | null, view: View) {
+  if (found === null) return ''
+  const { pieces, percent } = piecesOf(found, view)
+  const parts = pieces.map(piece => piece.text)
+  if (percent !== undefined) {
+    const filled = Math.round((percent / 100) * CELLS)
+    parts.push(`${'━'.repeat(filled)}${'─'.repeat(CELLS - filled)} ${Math.round(percent)}%`)
+  }
+  return parts.join(' · ')
+}
+
+/** The line as a styled tree, for the band and the footer; null with nothing to show. */
+function treeOf (found: Info | null, view: View, { Box, Text }: ReturnType<EngineInterface['ui']['resolve']>) {
+  if (found === null) return null
+  const { pieces, percent } = piecesOf(found, view)
+  const parts: Array<[string, RenderChildren]> = pieces.map(piece => [piece.key, <Text {...piece.style}>{piece.text}</Text>])
+  if (percent !== undefined) {
+    const filled = Math.round((percent / 100) * CELLS)
+    parts.push(['context', (
+      <Box flexDirection="row">
+        <Text color={colorFor(percent, view.accent)}>{'━'.repeat(filled)}</Text>
+        <Text dimColor>{'─'.repeat(CELLS - filled)}</Text>
+        <Text> {Math.round(percent)}%</Text>
+      </Box>
+    )])
+  }
+  if (parts.length === 0) return null
+  return (
+    <Box flexDirection="row">
+      {parts.flatMap(([key, part], i) => (i === 0 ? [part] : [<Text key={`${key}-sep`} dimColor> · </Text>, part]))}
+    </Box>
+  )
+}
+
+// The status line is pinned, not drawn: it is set again whenever the info changes.
+let pinned: string | undefined
+
+/** Pins the line as the status line when that is the position, only when its text changed. */
+async function pin ($: EngineInterface, view: View, position: Position) {
+  const text = position === 'status' ? lineOf(await read($, info), view) || undefined : undefined
+  if (text === pinned) return
+  pinned = text
+  $.ui.status(text)
+}
+
 export const register: Register = (on, options) => {
-  const showProject = options.showProject !== false
-  const showBranch = options.showBranch !== false
-  const showModel = options.showModel !== false
-  const showContext = options.showContext !== false
-  const accent = ACCENTS[String(options.accentColor)] ?? ACCENTS.green
+  const view: View = {
+    showProject: options.showProject !== false,
+    showBranch: options.showBranch !== false,
+    showModel: options.showModel !== false,
+    showContext: options.showContext !== false,
+    accent: ACCENTS[String(options.accentColor)] ?? DEFAULT_ACCENT
+  }
+  const position = (POSITIONS.includes(String(options.position)) ? options.position : 'above') as Position
 
   on('session.start', async ($, e, next) => {
+    // A reload with another position leaves no status line behind.
+    if (position !== 'status') $.ui.status(undefined)
     await refresh($)
     await setContext($, (await $.session.usage()).context.percent)
-    $.clock.every(REFRESH_MS, () => { void refresh($) })
+    await pin($, view, position)
+    $.clock.every(REFRESH_MS, () => { void refresh($).then(() => pin($, view, position)) })
     return next(e)
   })
 
   on('session.measure', async ($, e, next) => {
     await setContext($, e.context.percent)
+    await pin($, view, position)
     return next(e)
   })
 
-  // The band above the prompt: the session info on one line.
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const found = await read($, info)
-    if (e.props.hasSurvey || found === null) return next(e)
+  // The band above the prompt: the info on one line, over whatever another plugin draws there.
+  if (position === 'above') {
+    on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+      if (e.props.hasSurvey) return next(e)
+      const tree = treeOf(await read($, info), view, $.ui.resolve(e))
+      if (tree === null) return next(e)
 
-    const { Box, Text } = $.ui.resolve(e)
-    const parts: Array<[string, unknown]> = []
-    if (showProject && found.project) parts.push(['project', <Text bold color={accent}>{found.project}</Text>])
-    if (showBranch && found.branch) parts.push(['branch', <Text italic dimColor>{found.branch}</Text>])
-    if (showModel && found.model) parts.push(['model', <Text color="claude">{found.model}</Text>])
-    if (showContext && found.contextPercent !== undefined) {
-      const percent = Math.min(Math.max(found.contextPercent, 0), 100)
-      const filled = Math.round((percent / 100) * CELLS)
-      parts.push(['context', (
+      const below = await next(e)
+      if (!hasText(below)) return tree
+      const { Box } = $.ui.resolve(e)
+      return <Box flexDirection="column">{tree}{below}</Box>
+    })
+  }
+
+  // The footer's right side: the engine's mode labels (and any other plugin's part), then the info.
+  if (position === 'footer') {
+    on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+      const tree = treeOf(await read($, info), view, $.ui.resolve(e))
+      if (tree === null) return next(e)
+
+      const before = await next(e)
+      if (e.props.modes.length === 0 && !hasText(before)) return tree
+      const { Box, Text } = $.ui.resolve(e)
+      return (
         <Box flexDirection="row">
-          <Text color={colorFor(percent, accent)}>{'━'.repeat(filled)}</Text>
-          <Text dimColor>{'─'.repeat(CELLS - filled)}</Text>
-          <Text> {Math.round(percent)}%</Text>
+          {before}
+          <Text dimColor> · </Text>
+          {tree}
         </Box>
-      )])
-    }
-    if (parts.length === 0) return next(e)
+      )
+    })
+  }
 
-    return (
-      <Box flexDirection="row">
-        {parts.flatMap(([key, part], i) => (i === 0 ? [part] : [<Text key={`${key}-sep`} dimColor> · </Text>, part]))}
-      </Box>
-    )
-  })
+  // The end of the hint line under the prompt, as plain text after the engine's (and any other plugin's).
+  if (position === 'hint') {
+    on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
+      const text = lineOf(await read($, info), view)
+      if (!text) return next(e)
+      const tail = e.props.tail ? `${e.props.tail} · ${text}` : text
+      return next({ ...e, props: { ...e.props, tail } })
+    })
+  }
 }
