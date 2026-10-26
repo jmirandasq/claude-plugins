@@ -33,12 +33,29 @@ Todo se cambia en `/config`. Cada pieza se puede apagar:
 
 `accentColor` es el color del nombre del proyecto y de la barra de contexto por debajo del 75%: `green` (el verde de marca, `#00A859`), `orange`, `blue`, `purple` o `teal`. Salvo `green`, cada uno sigue el tema de Claude Code, así se lee bien en tema claro y oscuro.
 
+### Cambiar el color
+
+1. Abre `/config` en una sesión de Claude Code.
+2. Busca la fila **Accent color** del plugin.
+3. Elige `green`, `orange`, `blue`, `purple` o `teal`.
+
+El cambio se ve al momento: el plugin se recarga solo con el color nuevo, en el nombre del proyecto y en la barra de contexto.
+
 ## Instalación
 
 ```text
 /plugin marketplace add jmirandasq/claude-plugins
 /plugin install session-info@jmirandasq
 ```
+
+## Actualización
+
+```bash
+claude plugin marketplace update jmirandasq
+claude plugin update session-info@jmirandasq
+```
+
+Después, `/reload-plugins` en la sesión abierta, o una sesión nueva.
 
 ## Desarrollo
 

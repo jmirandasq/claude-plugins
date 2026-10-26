@@ -25,6 +25,20 @@ claude plugin install usage-meter@jmirandasq
 claude plugin install session-info@jmirandasq
 ```
 
+## Actualización
+
+```bash
+claude plugin marketplace update jmirandasq
+claude plugin update usage-meter@jmirandasq
+claude plugin update session-info@jmirandasq
+```
+
+Después, `/reload-plugins` en la sesión abierta, o una sesión nueva.
+
+## Configuración
+
+Las opciones de cada plugin se cambian en `/config`, por ejemplo el color de acento (`accentColor`) de los dos. El README de cada plugin lista sus opciones.
+
 ## Desarrollo
 
 Cada plugin vive en su carpeta de `plugins/`, con su manifiesto, su módulo de hooks y sus tests:
