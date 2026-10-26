@@ -78,10 +78,6 @@ async function meterOf ($: EngineInterface): Promise<Meter | null> {
   }
 }
 
-/** "5h 58% · 2h 10m": the meter as plain text for the hint, without the bar, which reads as one line without colors. */
-const lineOf = (meter: Meter) =>
-  `${meter.label} ${Math.round(meter.percent)}%` + (meter.resetsIn ? ` · ${meter.resetsIn}` : '')
-
 /** The meter as a styled row, for the band and the footer. */
 function treeOf (meter: Meter, accent: string, { Box, Text }: ReturnType<EngineInterface['ui']['resolve']>) {
   return (
@@ -153,24 +149,34 @@ export const register: Register = (on, options) => {
     })
   }
 
-  // The hint line under the prompt: without "(shift+tab to cycle)", and with the meter at its end in the hint position.
+  // The hint line under the prompt: without "(shift+tab to cycle)", and in the hint position with the meter after it, in its colors.
   if (hideCycleHint || position === 'hint') {
     on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
       const meter = position === 'hint' && 'isDraft' in e.props ? await meterOf($) : null
-      const text = meter ? lineOf(meter) : ''
       const hasHint = hideCycleHint && CYCLE_HINT.test(e.props.hint)
-      if (!hasHint && !text) return next(e)
+      if (!hasHint && meter === null) return next(e)
 
-      // A rewritten hint drops the tail, and another plugin may rewrite it after this one,
-      // so the meter joins the hint itself, with any tail a plugin before added.
+      // A rewritten hint drops the tail, so a tail another plugin added joins the hint itself.
       const { tail, ...rest } = e.props as typeof e.props & { tail?: string }
-      const hint = [hasHint ? e.props.hint.replace(CYCLE_HINT, ' · ') : e.props.hint, tail, text]
+      const hint = [e.props.hint.replace(CYCLE_HINT, ' · '), tail]
         .join('·')
         .split('·')
         .map(part => part.trim())
         .filter(Boolean)
         .join(' · ')
-      return next({ ...e, props: { ...rest, hint } })
+      const line = await next(hasHint ? { ...e, props: { ...rest, hint } } : e)
+      if (meter === null) return line
+
+      const tree = treeOf(meter, accent, $.ui.resolve(e))
+      if (!hint && !hasText(line)) return tree
+      const { Box, Text } = $.ui.resolve(e)
+      return (
+        <Box flexDirection="row">
+          {line}
+          <Text dimColor> · </Text>
+          {tree}
+        </Box>
+      )
     })
   }
 }

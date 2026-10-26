@@ -123,18 +123,15 @@ test('in the footer, draws the info after the mode labels and leaves the band', 
   expect(await has(await footer($), 'claude-plugins')).toBe(false)
 })
 
-test('in the hint, adds the info as plain text after the hints', { options: { position: 'hint' } }, async ($, on) => {
+test('in the hint, draws the info in its colors after the hints', { options: { position: 'hint' } }, async ($, on) => {
   world(on, MAIN)
   await startSession($)
   const ui = await mountAt($, 'PromptHint', { isDraft: false, isWorking: false, hint: '? for shortcuts' })
-  expect(await has(ui, '? for shortcuts · claude-plugins · main · sonnet-5-5 · 42%|')).toBe(true)
-})
-
-test('in the hint, keeps the tail a plugin before added, as part of the hint', { options: { position: 'hint' } }, async ($, on) => {
-  world(on, MAIN)
-  await startSession($)
-  const ui = await mountAt($, 'PromptHint', { isDraft: false, isWorking: false, hint: 'bypass permissions on', tail: 'week 1%' })
-  expect(await has(ui, 'bypass permissions on · week 1% · claude-plugins · main · sonnet-5-5 · 42%|')).toBe(true)
+  expect(await has(ui, '? for shortcuts|')).toBe(true)
+  expect((await ui.find({ type: 'Text', text: 'claude-plugins' }))?.props.color).toBe('#00A859')
+  expect((await ui.find({ type: 'Text', text: 'sonnet-5-5' }))?.props.color).toBe('claude')
+  expect(await has(ui, ' 42%')).toBe(true)
+  expect(await has(await footer($), 'claude-plugins')).toBe(false)
 })
 
 test('a status position kept from 0.3.0 falls back to the band and unpins the line', { options: { position: 'status' } }, async ($, on) => {

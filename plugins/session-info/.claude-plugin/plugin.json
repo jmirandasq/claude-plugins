@@ -1,6 +1,6 @@
 {
   "name": "session-info",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Claude Code footer with the project, git branch, model and context usage.",
   "author": {
     "name": "jmirandasq"
@@ -27,7 +27,7 @@
     "position": {
       "type": "string",
       "title": "Position",
-      "description": "Where it shows: above (the band above the prompt), footer (right of the line under the prompt) or hint (end of the hints under the prompt, as plain text without colors or bar).",
+      "description": "Where it shows: above (the band above the prompt), footer (right of the line under the prompt) or hint (after the hints under the prompt).",
       "options": ["above", "footer", "hint"],
       "default": "above"
     },

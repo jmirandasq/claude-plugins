@@ -88,15 +88,6 @@ function piecesOf (found: Info, view: View) {
   return { pieces, percent }
 }
 
-/** "claude-plugins · main · sonnet-5-5 · 42%": the line as plain text for the hint, the percent without a bar, which reads as one line without colors. */
-function lineOf (found: Info | null, view: View) {
-  if (found === null) return ''
-  const { pieces, percent } = piecesOf(found, view)
-  const parts = pieces.map(piece => piece.text)
-  if (percent !== undefined) parts.push(`${Math.round(percent)}%`)
-  return parts.join(' · ')
-}
-
 /** The line as a styled tree, for the band and the footer; null with nothing to show. */
 function treeOf (found: Info | null, view: View, { Box, Text }: ReturnType<EngineInterface['ui']['resolve']>) {
   if (found === null) return null
@@ -177,16 +168,22 @@ export const register: Register = (on, options) => {
     })
   }
 
-  // The end of the hint line under the prompt, as plain text after the engine's (and any other plugin's).
-  // A rewritten hint drops the tail, and another plugin may rewrite it (usage-meter drops the cycle hint),
-  // so the info joins the hint itself, with any tail a plugin before added.
+  // The end of the hint line under the prompt: the engine's line as drawn (and any other plugin's part), then the info in its colors.
   if (position === 'hint') {
     on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
-      const text = lineOf(await read($, info), view)
-      if (!text || !('isDraft' in e.props)) return next(e)
-      const { tail, ...rest } = e.props
-      const hint = [e.props.hint, tail, text].filter(Boolean).join(' · ')
-      return next({ ...e, props: { ...rest, hint } })
+      const tree = treeOf(await read($, info), view, $.ui.resolve(e))
+      if (tree === null || !('isDraft' in e.props)) return next(e)
+
+      const line = await next(e)
+      if (!e.props.hint.trim() && !hasText(line)) return tree
+      const { Box, Text } = $.ui.resolve(e)
+      return (
+        <Box flexDirection="row">
+          {line}
+          <Text dimColor> · </Text>
+          {tree}
+        </Box>
+      )
     })
   }
 }

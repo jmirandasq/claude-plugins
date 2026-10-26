@@ -40,7 +40,7 @@ En `/config`, la fila **Position** del plugin:
 | `footer` | En la línea bajo el prompt, a la derecha, después del modo de permisos. |
 | `hint` | Al final de las ayudas bajo el prompt (`? for shortcuts`). |
 
-En `hint` se muestra solo texto: el porcentaje sin barra y sin colores, porque sin color la barra no se distingue. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
+En las tres posiciones se ve igual, con sus colores. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
 
 ## Instalación
 
@@ -64,7 +64,7 @@ Un único módulo de hooks ([`hooks/register.tsx`](hooks/register.tsx)):
 
 - `session.measure` entrega las ventanas de consumo tras cada respuesta, y `$.session.usage()` la primera lectura al iniciar.
 - La última lectura se guarda en `$.store`, así una sesión nueva la muestra antes de su primera respuesta.
-- Según `position`, un hook `ui.render` dibuja la barra sobre `AbovePrompt` (la banda), sobre `SessionMode` (después de lo que dibuja el motor) o, como texto, al final de la línea de `PromptHint`, sumándose a lo que haya puesto otro plugin.
+- Según `position`, un hook `ui.render` dibuja la barra sobre `AbovePrompt` (la banda), sobre `SessionMode` (después de lo que dibuja el motor) o sobre `PromptHint` (después de la línea de ayudas).
 - Un hook `ui.render` sobre `PromptHint` quita `(shift+tab to cycle)` de la línea de ayudas.
 
 ## Desarrollo

@@ -52,7 +52,7 @@ En `/config`, la fila **Position** del plugin:
 | `footer` | En la línea bajo el prompt, a la derecha, después del modo de permisos. |
 | `hint` | Al final de las ayudas bajo el prompt (`? for shortcuts`). |
 
-En `hint` se muestra solo texto: el porcentaje sin barra y sin colores, porque sin color la barra no se distingue. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
+En las tres posiciones se ve igual, con sus colores. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
 
 ## Instalación
 

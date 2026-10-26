@@ -1,6 +1,6 @@
 {
   "name": "usage-meter",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Claude Code subscription usage at the bottom right: the 5-hour and weekly windows.",
   "author": {
     "name": "jmirandasq"
@@ -19,7 +19,7 @@
     "position": {
       "type": "string",
       "title": "Position",
-      "description": "Where it shows: above (the band above the prompt), footer (right of the line under the prompt) or hint (end of the hints under the prompt, as plain text without colors or bar).",
+      "description": "Where it shows: above (the band above the prompt), footer (right of the line under the prompt) or hint (after the hints under the prompt).",
       "options": ["above", "footer", "hint"],
       "default": "footer"
     },

@@ -142,25 +142,22 @@ test('in the band, draws the meter above the prompt and leaves the footer', { op
   expect(await (await footer($)).find({ type: 'Text', text: ' 58%' })).toBeUndefined()
 })
 
-test('in the hint, adds the meter as plain text after the hints', { options: { position: 'hint' } }, async ($, on) => {
+test('in the hint, draws the meter in its colors after the hints', { options: { position: 'hint' } }, async ($, on) => {
   world(on)
   await startSession($)
   const ui = await hint($, '? for shortcuts')
-  expect(await ui.find({ type: 'Text', text: '? for shortcuts · 5h 58% · 2h 10m' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '? for shortcuts' })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: '━━━━━━' }))?.props.color).toBe('#00A859')
+  expect(await ui.find({ type: 'Text', text: ' 58%' })).toBeDefined()
+  expect(await (await footer($)).find({ type: 'Text', text: ' 58%' })).toBeUndefined()
 })
 
-test('in the hint, joins the meter to a hint without the cycle hint', { options: { position: 'hint' } }, async ($, on) => {
+test('in the hint, drops the cycle hint and keeps a tail another plugin added', { options: { position: 'hint' } }, async ($, on) => {
   world(on)
   await startSession($)
-  const ui = await hint($, '(shift+tab to cycle) · ← for agents')
-  expect(await ui.find({ type: 'Text', text: '← for agents · 5h 58% · 2h 10m' })).toBeDefined()
-})
-
-test("in the hint, keeps another plugin's text when it drops the cycle hint", { options: { position: 'hint' } }, async ($, on) => {
-  world(on)
-  await startSession($)
-  const ui = await mountAt($, 'bypass permissions on (shift+tab to cycle)', 'claude-plugins · main · 42%')
-  expect(await ui.find({ type: 'Text', text: 'bypass permissions on · claude-plugins · main · 42% · 5h 58% · 2h 10m' })).toBeDefined()
+  const ui = await mountAt($, 'bypass permissions on (shift+tab to cycle)', 'more')
+  expect(await ui.find({ type: 'Text', text: 'bypass permissions on · more' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: ' 58%' })).toBeDefined()
 })
 
 test('a status position kept from 0.3.0 falls back to the footer and unpins the meter', { options: { position: 'status' } }, async ($, on) => {
