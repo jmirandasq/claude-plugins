@@ -10,7 +10,7 @@ Mod de Claude Code que muestra el consumo de la suscripción en el pie del promp
 
 - Una barra con el porcentaje de uso y el tiempo que falta para que la ventana se reinicie.
 - Alterna cada 8 segundos entre la ventana de **5 horas** y la **semanal**.
-- Verde por debajo del 75%, amarillo desde 75% y rojo desde 90%.
+- En el color de acento (verde por defecto) por debajo del 75%, amarillo desde 75% y rojo desde 90%.
 
 Claude Code solo informa las ventanas de 5 horas y semanal; no existe una ventana mensual. Con facturación por API key no hay consumo que mostrar, y el pie se queda como está.
 
@@ -18,6 +18,7 @@ Claude Code solo informa las ventanas de 5 horas y semanal; no existe una ventan
 
 | Opción | Por defecto | Descripción |
 |---|---|---|
+| `accentColor` | `green` | Color de la barra por debajo del 75%: `green` (el verde de marca, `#00A859`), `orange`, `blue`, `purple` o `teal`. Salvo `green`, cada uno sigue el tema de Claude Code. Se cambia en `/config`. |
 | `hideCycleHint` | Activada | Quita el texto `(shift+tab to cycle)` después del modo de permisos, para dejar espacio a la barra. Se cambia en `/config`. |
 
 ## Instalación

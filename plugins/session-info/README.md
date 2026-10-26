@@ -10,10 +10,10 @@ claude-plugins · main · sonnet-5-5 · ━━━━────── 42%
 
 | Pieza | Descripción |
 |---|---|
-| Proyecto | Carpeta raíz del proyecto de la sesión, en negrita y verde. |
+| Proyecto | Carpeta raíz del proyecto de la sesión, en negrita y en el color de acento (verde por defecto). |
 | Rama | Rama actual de git, en cursiva. En HEAD desacoplado, el commit corto (`@abc1234`). Fuera de un repositorio no se muestra. |
 | Modelo | El modelo de la sesión, como lo muestra `/model`, sin el prefijo `claude-` ni la fecha, en el naranja de Claude. |
-| Contexto | Barra con el porcentaje de la ventana de contexto en uso. Verde por debajo del 75%, amarillo desde 75% y rojo desde 90%. |
+| Contexto | Barra con el porcentaje de la ventana de contexto en uso. En el color de acento por debajo del 75%, amarillo desde 75% y rojo desde 90%. |
 
 La rama y el modelo se actualizan cada 5 segundos. El contexto se actualiza tras cada respuesta, y no aparece hasta que hay una.
 
@@ -21,14 +21,17 @@ La banda cede el sitio a las encuestas de Claude Code y se puede colapsar con ct
 
 ## Configuración
 
-Cada pieza se puede apagar en `/config`:
+Todo se cambia en `/config`. Cada pieza se puede apagar:
 
 | Opción | Por defecto |
 |---|---|
+| `accentColor` | `green` |
 | `showProject` | Activada |
 | `showBranch` | Activada |
 | `showModel` | Activada |
 | `showContext` | Activada |
+
+`accentColor` es el color del nombre del proyecto y de la barra de contexto por debajo del 75%: `green` (el verde de marca, `#00A859`), `orange`, `blue`, `purple` o `teal`. Salvo `green`, cada uno sigue el tema de Claude Code, así se lee bien en tema claro y oscuro.
 
 ## Instalación
 

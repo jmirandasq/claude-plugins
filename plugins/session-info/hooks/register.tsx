@@ -6,10 +6,18 @@ import type { Info } from '../types'
 const info = atom({ plugin: 'session-info', key: 'info' } as const, null as Info | null)
 
 const REFRESH_MS = 5000
-const BRAND_GREEN = '#00A859'
+
+/** The accentColor choices: the brand green as is, the rest as theme keys so they follow the person's theme. */
+const ACCENTS: Record<string, string> = {
+  green: '#00A859',
+  orange: 'claude',
+  blue: 'suggestion',
+  purple: 'autoAccept',
+  teal: 'planMode'
+}
 
 const CELLS = 10
-const colorFor = (percent: number) => (percent >= 90 ? 'error' : percent >= 75 ? 'warning' : BRAND_GREEN)
+const colorFor = (percent: number, accent: string) => (percent >= 90 ? 'error' : percent >= 75 ? 'warning' : accent)
 
 /** "claude-plugins" from "/Users/me/work/claude-plugins". */
 const projectOf = (path: string) => path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || path
@@ -59,6 +67,7 @@ export const register: Register = (on, options) => {
   const showBranch = options.showBranch !== false
   const showModel = options.showModel !== false
   const showContext = options.showContext !== false
+  const accent = ACCENTS[String(options.accentColor)] ?? ACCENTS.green
 
   on('session.start', async ($, e, next) => {
     await refresh($)
@@ -79,7 +88,7 @@ export const register: Register = (on, options) => {
 
     const { Box, Text } = $.ui.resolve(e)
     const parts: Array<[string, unknown]> = []
-    if (showProject && found.project) parts.push(['project', <Text bold color={BRAND_GREEN}>{found.project}</Text>])
+    if (showProject && found.project) parts.push(['project', <Text bold color={accent}>{found.project}</Text>])
     if (showBranch && found.branch) parts.push(['branch', <Text italic dimColor>{found.branch}</Text>])
     if (showModel && found.model) parts.push(['model', <Text color="claude">{found.model}</Text>])
     if (showContext && found.contextPercent !== undefined) {
@@ -87,7 +96,7 @@ export const register: Register = (on, options) => {
       const filled = Math.round((percent / 100) * CELLS)
       parts.push(['context', (
         <Box flexDirection="row">
-          <Text color={colorFor(percent)}>{'━'.repeat(filled)}</Text>
+          <Text color={colorFor(percent, accent)}>{'━'.repeat(filled)}</Text>
           <Text dimColor>{'─'.repeat(CELLS - filled)}</Text>
           <Text> {Math.round(percent)}%</Text>
         </Box>

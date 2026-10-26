@@ -89,3 +89,19 @@ test('draws nothing for a piece the options turn off', { options: { showModel: f
   expect(await has(ui, 'sonnet-5-5')).toBe(false)
   expect(await has(ui, ' 42%')).toBe(false)
 })
+
+test('draws the project and the context bar in the brand green by default', async ($, on) => {
+  world(on, MAIN)
+  await startSession($)
+  const ui = await footer($)
+  expect((await ui.find({ type: 'Text', text: 'claude-plugins' }))?.props.color).toBe('#00A859')
+  expect((await ui.find({ type: 'Text', text: '━━━━' }))?.props.color).toBe('#00A859')
+})
+
+test('draws them in the accent color the options choose', { options: { accentColor: 'blue' } }, async ($, on) => {
+  world(on, MAIN)
+  await startSession($)
+  const ui = await footer($)
+  expect((await ui.find({ type: 'Text', text: 'claude-plugins' }))?.props.color).toBe('suggestion')
+  expect((await ui.find({ type: 'Text', text: '━━━━' }))?.props.color).toBe('suggestion')
+})

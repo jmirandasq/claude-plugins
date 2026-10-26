@@ -108,3 +108,17 @@ test('leaves every other hint as it is', async ($, on) => {
   const ui = await hint($, '? for shortcuts')
   expect(await ui.find({ type: 'Text', text: '? for shortcuts' })).toBeDefined()
 })
+
+test('draws the bar in the brand green by default', async ($, on) => {
+  world(on)
+  await startSession($)
+  const ui = await footer($)
+  expect((await ui.find({ type: 'Text', text: '━━━━━━' }))?.props.color).toBe('#00A859')
+})
+
+test('draws the bar in the accent color the options choose', { options: { accentColor: 'purple' } }, async ($, on) => {
+  world(on)
+  await startSession($)
+  const ui = await footer($)
+  expect((await ui.find({ type: 'Text', text: '━━━━━━' }))?.props.color).toBe('autoAccept')
+})

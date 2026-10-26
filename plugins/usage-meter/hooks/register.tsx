@@ -19,8 +19,15 @@ const windowsOf = (rateLimits: readonly SessionRateLimit[]): Limit[] =>
     return found ? [{ kind, percentUsed: found.percentUsed, resetsAt: found.resetsAt }] : []
   })
 
-const BRAND_GREEN = '#00A859'
-const colorFor = (percent: number) => (percent >= 90 ? 'error' : percent >= 75 ? 'warning' : BRAND_GREEN)
+/** The accentColor choices: the brand green as is, the rest as theme keys so they follow the person's theme. */
+const ACCENTS: Record<string, string> = {
+  green: '#00A859',
+  orange: 'claude',
+  blue: 'suggestion',
+  purple: 'autoAccept',
+  teal: 'planMode'
+}
+const colorFor = (percent: number, accent: string) => (percent >= 90 ? 'error' : percent >= 75 ? 'warning' : accent)
 
 /** "42m", "3h 5m", "2d 4h": how long until the window resets. */
 function until (ms: number) {
@@ -40,6 +47,7 @@ async function remember ($: EngineInterface, found: Limit[]) {
 
 export const register: Register = (on, options) => {
   const hideCycleHint = options.hideCycleHint !== false
+  const accent = ACCENTS[String(options.accentColor)] ?? ACCENTS.green
 
   on('session.start', async ($, e, next) => {
     const saved = await $.store.get('limits')
@@ -77,7 +85,7 @@ export const register: Register = (on, options) => {
         {labels}
         {labels ? <Text dimColor> · </Text> : null}
         <Text dimColor>{LABELS[shown.kind] ?? shown.kind} </Text>
-        <Text color={colorFor(percent)}>{'━'.repeat(filled)}</Text>
+        <Text color={colorFor(percent, accent)}>{'━'.repeat(filled)}</Text>
         <Text dimColor>{'─'.repeat(CELLS - filled)}</Text>
         <Text> {Math.round(percent)}%</Text>
         {resetsIn !== undefined && !hasReset ? <Text dimColor> · {until(resetsIn)}</Text> : null}

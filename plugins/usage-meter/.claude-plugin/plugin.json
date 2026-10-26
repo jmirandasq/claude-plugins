@@ -1,6 +1,6 @@
 {
   "name": "usage-meter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Claude Code subscription usage at the bottom right: the 5-hour and weekly windows.",
   "author": {
     "name": "jmirandasq"
@@ -9,6 +9,13 @@
   "keywords": ["usage", "subscription", "rate-limits", "status", "mod"],
   "types": "./types/index.d.ts",
   "userConfig": {
+    "accentColor": {
+      "type": "string",
+      "title": "Accent color",
+      "description": "Color of the usage bar below 75%.",
+      "options": ["green", "orange", "blue", "purple", "teal"],
+      "default": "green"
+    },
     "hideCycleHint": {
       "type": "boolean",
       "title": "Hide the mode cycle hint",
