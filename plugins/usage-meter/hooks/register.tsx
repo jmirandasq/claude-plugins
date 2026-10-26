@@ -46,9 +46,9 @@ async function remember ($: EngineInterface, found: Limit[]) {
   await $.store.set('limits', found)
 }
 
-/** Where the meter goes: the band above the prompt, the footer's right side, the hint line's end, or a pinned status line. */
-type Position = 'above' | 'footer' | 'hint' | 'status'
-const POSITIONS: readonly string[] = ['above', 'footer', 'hint', 'status']
+/** Where the meter goes: the band above the prompt, the footer's right side, or the hint line's end. */
+type Position = 'above' | 'footer' | 'hint'
+const POSITIONS: readonly string[] = ['above', 'footer', 'hint']
 
 /** The window on show, ready to draw. */
 type Meter = { label: string; percent: number; filled: number; resetsIn?: string }
@@ -78,10 +78,9 @@ async function meterOf ($: EngineInterface): Promise<Meter | null> {
   }
 }
 
-/** "5h ━━━━━━──── 58% · 2h 10m": the meter as plain text, for the hint and the status line. */
+/** "5h 58% · 2h 10m": the meter as plain text for the hint, without the bar, which reads as one line without colors. */
 const lineOf = (meter: Meter) =>
-  `${meter.label} ${'━'.repeat(meter.filled)}${'─'.repeat(CELLS - meter.filled)} ${Math.round(meter.percent)}%` +
-  (meter.resetsIn ? ` · ${meter.resetsIn}` : '')
+  `${meter.label} ${Math.round(meter.percent)}%` + (meter.resetsIn ? ` · ${meter.resetsIn}` : '')
 
 /** The meter as a styled row, for the band and the footer. */
 function treeOf (meter: Meter, accent: string, { Box, Text }: ReturnType<EngineInterface['ui']['resolve']>) {
@@ -96,41 +95,27 @@ function treeOf (meter: Meter, accent: string, { Box, Text }: ReturnType<EngineI
   )
 }
 
-// The status line is pinned, not drawn: it is set again whenever the meter changes.
-let pinned: string | undefined
-
-/** Pins the meter as the status line when that is the position, only when its text changed. */
-async function pin ($: EngineInterface, position: Position) {
-  const meter = position === 'status' ? await meterOf($) : null
-  const text = meter ? lineOf(meter) : undefined
-  if (text === pinned) return
-  pinned = text
-  $.ui.status(text)
-}
-
 export const register: Register = (on, options) => {
   const hideCycleHint = options.hideCycleHint !== false
   const accent = ACCENTS[String(options.accentColor)] ?? DEFAULT_ACCENT
   const position = (POSITIONS.includes(String(options.position)) ? options.position : 'footer') as Position
 
   on('session.start', async ($, e, next) => {
-    // A reload with another position leaves no status line behind.
-    if (position !== 'status') $.ui.status(undefined)
+    // 0.3.0 could pin the meter as a status line; an update leaves none behind.
+    $.ui.status(undefined)
 
     const saved = await $.store.get('limits')
     if (Array.isArray(saved)) await update($, limits, () => saved as Limit[])
 
     const usage = await $.session.usage()
     await remember($, windowsOf(usage.rateLimits))
-    await pin($, position)
 
-    $.clock.every(ROTATE_MS, () => { void update($, view, n => n + 1).then(() => pin($, position)) })
+    $.clock.every(ROTATE_MS, () => { void update($, view, n => n + 1) })
     return next(e)
   })
 
   on('session.measure', async ($, e, next) => {
     await remember($, windowsOf(e.rateLimits))
-    await pin($, position)
     return next(e)
   })
 

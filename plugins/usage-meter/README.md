@@ -19,7 +19,7 @@ Claude Code solo informa las ventanas de 5 horas y semanal; no existe una ventan
 | Opción | Por defecto | Descripción |
 |---|---|---|
 | `accentColor` | `green` | Color de la barra por debajo del 75%: `green` (el verde de marca, `#00A859`), `orange`, `blue`, `purple` o `teal`. Salvo `green`, cada uno sigue el tema de Claude Code. Se cambia en `/config`. |
-| `position` | `footer` | Dónde aparece la barra: `above`, `footer`, `hint` o `status`. Ver abajo. |
+| `position` | `footer` | Dónde aparece la barra: `above`, `footer` o `hint`. Ver abajo. |
 | `hideCycleHint` | Activada | Quita el texto `(shift+tab to cycle)` después del modo de permisos, para dejar espacio a la barra. Se cambia en `/config`. |
 
 ### Cambiar el color
@@ -39,9 +39,8 @@ En `/config`, la fila **Position** del plugin:
 | `above` | En la banda encima del prompt. |
 | `footer` | En la línea bajo el prompt, a la derecha, después del modo de permisos. |
 | `hint` | Al final de las ayudas bajo el prompt (`? for shortcuts`). |
-| `status` | En una línea fija bajo el prompt, junto a los avisos de Claude Code. |
 
-En `hint` y `status` se muestra solo texto, sin colores: la barra y el porcentaje se ven igual, pero sin el color de acento ni el amarillo y rojo. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
+En `hint` se muestra solo texto: el porcentaje sin barra y sin colores, porque sin color la barra no se distingue. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
 
 ## Instalación
 
@@ -65,7 +64,7 @@ Un único módulo de hooks ([`hooks/register.tsx`](hooks/register.tsx)):
 
 - `session.measure` entrega las ventanas de consumo tras cada respuesta, y `$.session.usage()` la primera lectura al iniciar.
 - La última lectura se guarda en `$.store`, así una sesión nueva la muestra antes de su primera respuesta.
-- Según `position`, un hook `ui.render` dibuja la barra sobre `AbovePrompt` (la banda), sobre `SessionMode` (después de lo que dibuja el motor) o en el `tail` de `PromptHint`; en `status`, `$.ui.status` la fija como línea de estado.
+- Según `position`, un hook `ui.render` dibuja la barra sobre `AbovePrompt` (la banda), sobre `SessionMode` (después de lo que dibuja el motor) o, como texto, en el `tail` de `PromptHint`.
 - Un hook `ui.render` sobre `PromptHint` quita `(shift+tab to cycle)` de la línea de ayudas.
 
 ## Desarrollo

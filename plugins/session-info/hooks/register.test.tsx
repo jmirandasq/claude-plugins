@@ -127,14 +127,12 @@ test('in the hint, adds the info as plain text after the hints', { options: { po
   world(on, MAIN)
   await startSession($)
   const ui = await mountAt($, 'PromptHint', { isDraft: false, isWorking: false, hint: '? for shortcuts' })
-  expect(await has(ui, '? for shortcuts|claude-plugins · main · sonnet-5-5 · ━━━━────── 42%')).toBe(true)
+  expect(await has(ui, '? for shortcuts|claude-plugins · main · sonnet-5-5 · 42%')).toBe(true)
 })
 
-test('in the status line, pins the info as plain text and follows it', { options: { position: 'status' } }, async ($, on) => {
+test('a status position kept from 0.3.0 falls back to the band and unpins the line', { options: { position: 'status' } }, async ($, on) => {
   const { pinned } = world(on, MAIN).state
   await startSession($)
-  expect(pinned.at(-1)).toBe('claude-plugins · main · sonnet-5-5 · ━━━━────── 42%')
-  await $.session.measure({ context: { window: 200_000, percent: 91 }, rateLimits: [], changed: ['context'] })
-  expect(pinned.at(-1)).toBe('claude-plugins · main · sonnet-5-5 · ━━━━━━━━━─ 91%')
-  expect(await has(await footer($), 'claude-plugins')).toBe(false)
+  expect(await has(await footer($), 'claude-plugins')).toBe(true)
+  expect(pinned).toEqual([undefined])
 })

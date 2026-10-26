@@ -51,9 +51,8 @@ En `/config`, la fila **Position** del plugin:
 | `above` | En la banda encima del prompt. |
 | `footer` | En la línea bajo el prompt, a la derecha, después del modo de permisos. |
 | `hint` | Al final de las ayudas bajo el prompt (`? for shortcuts`). |
-| `status` | En una línea fija bajo el prompt, junto a los avisos de Claude Code. |
 
-En `hint` y `status` se muestra solo texto, sin colores: la barra y el porcentaje se ven igual, pero sin el color de acento ni el amarillo y rojo. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
+En `hint` se muestra solo texto: el porcentaje sin barra y sin colores, porque sin color la barra no se distingue. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
 
 ## Instalación
 

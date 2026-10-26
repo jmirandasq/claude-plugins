@@ -144,21 +144,19 @@ test('in the hint, adds the meter as plain text after the hints', { options: { p
   world(on)
   await startSession($)
   const ui = await hint($, '? for shortcuts')
-  expect(await ui.find({ type: 'Text', text: '? for shortcuts | 5h ━━━━━━──── 58% · 2h 10m' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '? for shortcuts | 5h 58% · 2h 10m' })).toBeDefined()
 })
 
 test('in the hint, joins the meter to a hint without the cycle hint', { options: { position: 'hint' } }, async ($, on) => {
   world(on)
   await startSession($)
   const ui = await hint($, '(shift+tab to cycle) · ← for agents')
-  expect(await ui.find({ type: 'Text', text: '← for agents · 5h ━━━━━━──── 58% · 2h 10m' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '← for agents · 5h 58% · 2h 10m' })).toBeDefined()
 })
 
-test('in the status line, pins the meter and takes turns with the weekly window', { options: { position: 'status' } }, async ($, on) => {
+test('a status position kept from 0.3.0 falls back to the footer and unpins the meter', { options: { position: 'status' } }, async ($, on) => {
   const w = world(on)
   await startSession($)
-  expect(w.pinned.at(-1)).toBe('5h ━━━━━━──── 58% · 2h 10m')
-  await w.clock.advance(8000)
-  expect(w.pinned.at(-1)).toBe('week ━━──────── 24% · 3d 4h')
-  expect(await (await footer($)).find({ type: 'Text', text: ' 58%' })).toBeUndefined()
+  expect(await (await footer($)).find({ type: 'Text', text: ' 58%' })).toBeDefined()
+  expect(w.pinned).toEqual([undefined])
 })

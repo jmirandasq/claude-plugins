@@ -63,9 +63,9 @@ async function setContext ($: EngineInterface, percent: number | undefined) {
   await update($, info, () => ({ ...current, contextPercent: percent }))
 }
 
-/** Where the line goes: the band above the prompt, the footer's right side, the hint line's end, or a pinned status line. */
-type Position = 'above' | 'footer' | 'hint' | 'status'
-const POSITIONS: readonly string[] = ['above', 'footer', 'hint', 'status']
+/** Where the line goes: the band above the prompt, the footer's right side, or the hint line's end. */
+type Position = 'above' | 'footer' | 'hint'
+const POSITIONS: readonly string[] = ['above', 'footer', 'hint']
 
 /** What the options turn on, and in which color. */
 type View = { showProject: boolean; showBranch: boolean; showModel: boolean; showContext: boolean; accent: string }
@@ -88,15 +88,12 @@ function piecesOf (found: Info, view: View) {
   return { pieces, percent }
 }
 
-/** "claude-plugins · main · sonnet-5-5 · ━━━━────── 42%": the line as plain text, for the hint and the status line. */
+/** "claude-plugins · main · sonnet-5-5 · 42%": the line as plain text for the hint, the percent without a bar, which reads as one line without colors. */
 function lineOf (found: Info | null, view: View) {
   if (found === null) return ''
   const { pieces, percent } = piecesOf(found, view)
   const parts = pieces.map(piece => piece.text)
-  if (percent !== undefined) {
-    const filled = Math.round((percent / 100) * CELLS)
-    parts.push(`${'━'.repeat(filled)}${'─'.repeat(CELLS - filled)} ${Math.round(percent)}%`)
-  }
+  if (percent !== undefined) parts.push(`${Math.round(percent)}%`)
   return parts.join(' · ')
 }
 
@@ -123,17 +120,6 @@ function treeOf (found: Info | null, view: View, { Box, Text }: ReturnType<Engin
   )
 }
 
-// The status line is pinned, not drawn: it is set again whenever the info changes.
-let pinned: string | undefined
-
-/** Pins the line as the status line when that is the position, only when its text changed. */
-async function pin ($: EngineInterface, view: View, position: Position) {
-  const text = position === 'status' ? lineOf(await read($, info), view) || undefined : undefined
-  if (text === pinned) return
-  pinned = text
-  $.ui.status(text)
-}
-
 export const register: Register = (on, options) => {
   const view: View = {
     showProject: options.showProject !== false,
@@ -145,18 +131,16 @@ export const register: Register = (on, options) => {
   const position = (POSITIONS.includes(String(options.position)) ? options.position : 'above') as Position
 
   on('session.start', async ($, e, next) => {
-    // A reload with another position leaves no status line behind.
-    if (position !== 'status') $.ui.status(undefined)
+    // 0.3.0 could pin the line as a status line; an update leaves none behind.
+    $.ui.status(undefined)
     await refresh($)
     await setContext($, (await $.session.usage()).context.percent)
-    await pin($, view, position)
-    $.clock.every(REFRESH_MS, () => { void refresh($).then(() => pin($, view, position)) })
+    $.clock.every(REFRESH_MS, () => { void refresh($) })
     return next(e)
   })
 
   on('session.measure', async ($, e, next) => {
     await setContext($, e.context.percent)
-    await pin($, view, position)
     return next(e)
   })
 
