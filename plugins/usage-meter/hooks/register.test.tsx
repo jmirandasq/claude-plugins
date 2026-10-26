@@ -40,6 +40,8 @@ function world (on: On, rateLimits: SessionRateLimit[] = LIMITS) {
 const startSession = ($: Engine) => $.session.start({ cwd: '/project', surface: 'terminal', isInteractive: true })
 const footer = ($: Engine, modes: string[] = []) =>
   $.ui.mount({ plugin: 'usage-meter', surface: 'terminal', component: 'SessionMode', props: { modes } })
+const mountAt = ($: Engine, text: string, tail: string) =>
+  $.ui.mount({ plugin: 'usage-meter', surface: 'terminal', component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: text, tail } })
 const hint = ($: Engine, text: string) =>
   $.ui.mount({ plugin: 'usage-meter', surface: 'terminal', component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: text } })
 
@@ -144,7 +146,7 @@ test('in the hint, adds the meter as plain text after the hints', { options: { p
   world(on)
   await startSession($)
   const ui = await hint($, '? for shortcuts')
-  expect(await ui.find({ type: 'Text', text: '? for shortcuts | 5h 58% · 2h 10m' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '? for shortcuts · 5h 58% · 2h 10m' })).toBeDefined()
 })
 
 test('in the hint, joins the meter to a hint without the cycle hint', { options: { position: 'hint' } }, async ($, on) => {
@@ -152,6 +154,13 @@ test('in the hint, joins the meter to a hint without the cycle hint', { options:
   await startSession($)
   const ui = await hint($, '(shift+tab to cycle) · ← for agents')
   expect(await ui.find({ type: 'Text', text: '← for agents · 5h 58% · 2h 10m' })).toBeDefined()
+})
+
+test("in the hint, keeps another plugin's text when it drops the cycle hint", { options: { position: 'hint' } }, async ($, on) => {
+  world(on)
+  await startSession($)
+  const ui = await mountAt($, 'bypass permissions on (shift+tab to cycle)', 'claude-plugins · main · 42%')
+  expect(await ui.find({ type: 'Text', text: 'bypass permissions on · claude-plugins · main · 42% · 5h 58% · 2h 10m' })).toBeDefined()
 })
 
 test('a status position kept from 0.3.0 falls back to the footer and unpins the meter', { options: { position: 'status' } }, async ($, on) => {

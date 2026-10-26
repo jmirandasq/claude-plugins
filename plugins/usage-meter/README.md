@@ -64,7 +64,7 @@ Un único módulo de hooks ([`hooks/register.tsx`](hooks/register.tsx)):
 
 - `session.measure` entrega las ventanas de consumo tras cada respuesta, y `$.session.usage()` la primera lectura al iniciar.
 - La última lectura se guarda en `$.store`, así una sesión nueva la muestra antes de su primera respuesta.
-- Según `position`, un hook `ui.render` dibuja la barra sobre `AbovePrompt` (la banda), sobre `SessionMode` (después de lo que dibuja el motor) o, como texto, en el `tail` de `PromptHint`.
+- Según `position`, un hook `ui.render` dibuja la barra sobre `AbovePrompt` (la banda), sobre `SessionMode` (después de lo que dibuja el motor) o, como texto, al final de la línea de `PromptHint`, sumándose a lo que haya puesto otro plugin.
 - Un hook `ui.render` sobre `PromptHint` quita `(shift+tab to cycle)` de la línea de ayudas.
 
 ## Desarrollo

@@ -161,14 +161,10 @@ export const register: Register = (on, options) => {
       const hasHint = hideCycleHint && CYCLE_HINT.test(e.props.hint)
       if (!hasHint && !text) return next(e)
 
-      if (!hasHint) {
-        const tail = 'tail' in e.props && e.props.tail ? `${e.props.tail} · ${text}` : text
-        return next({ ...e, props: { ...e.props, tail } })
-      }
-
-      // A rewritten hint replaces the whole line, so what would go in the tail joins the hint itself.
+      // A rewritten hint drops the tail, and another plugin may rewrite it after this one,
+      // so the meter joins the hint itself, with any tail a plugin before added.
       const { tail, ...rest } = e.props as typeof e.props & { tail?: string }
-      const hint = [e.props.hint.replace(CYCLE_HINT, ' · '), tail, text]
+      const hint = [hasHint ? e.props.hint.replace(CYCLE_HINT, ' · ') : e.props.hint, tail, text]
         .join('·')
         .split('·')
         .map(part => part.trim())

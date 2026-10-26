@@ -127,7 +127,14 @@ test('in the hint, adds the info as plain text after the hints', { options: { po
   world(on, MAIN)
   await startSession($)
   const ui = await mountAt($, 'PromptHint', { isDraft: false, isWorking: false, hint: '? for shortcuts' })
-  expect(await has(ui, '? for shortcuts|claude-plugins · main · sonnet-5-5 · 42%')).toBe(true)
+  expect(await has(ui, '? for shortcuts · claude-plugins · main · sonnet-5-5 · 42%|')).toBe(true)
+})
+
+test('in the hint, keeps the tail a plugin before added, as part of the hint', { options: { position: 'hint' } }, async ($, on) => {
+  world(on, MAIN)
+  await startSession($)
+  const ui = await mountAt($, 'PromptHint', { isDraft: false, isWorking: false, hint: 'bypass permissions on', tail: 'week 1%' })
+  expect(await has(ui, 'bypass permissions on · week 1% · claude-plugins · main · sonnet-5-5 · 42%|')).toBe(true)
 })
 
 test('a status position kept from 0.3.0 falls back to the band and unpins the line', { options: { position: 'status' } }, async ($, on) => {

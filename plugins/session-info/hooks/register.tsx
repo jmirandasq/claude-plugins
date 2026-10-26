@@ -178,12 +178,15 @@ export const register: Register = (on, options) => {
   }
 
   // The end of the hint line under the prompt, as plain text after the engine's (and any other plugin's).
+  // A rewritten hint drops the tail, and another plugin may rewrite it (usage-meter drops the cycle hint),
+  // so the info joins the hint itself, with any tail a plugin before added.
   if (position === 'hint') {
     on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
       const text = lineOf(await read($, info), view)
-      if (!text) return next(e)
-      const tail = e.props.tail ? `${e.props.tail} · ${text}` : text
-      return next({ ...e, props: { ...e.props, tail } })
+      if (!text || !('isDraft' in e.props)) return next(e)
+      const { tail, ...rest } = e.props
+      const hint = [e.props.hint, tail, text].filter(Boolean).join(' · ')
+      return next({ ...e, props: { ...rest, hint } })
     })
   }
 }
