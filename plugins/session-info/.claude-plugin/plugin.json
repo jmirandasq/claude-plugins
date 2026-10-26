@@ -1,0 +1,45 @@
+{
+  "name": "session-info",
+  "version": "0.1.0",
+  "description": "Claude Code footer with the project, git branch, model and context usage.",
+  "author": {
+    "name": "jmirandasq"
+  },
+  "license": "MIT",
+  "keywords": [
+    "git",
+    "branch",
+    "project",
+    "model",
+    "context",
+    "status",
+    "mod"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "showProject": {
+      "type": "boolean",
+      "title": "Show the project",
+      "description": "The name of the session's project folder.",
+      "default": true
+    },
+    "showBranch": {
+      "type": "boolean",
+      "title": "Show the git branch",
+      "description": "The current branch, or the short commit on a detached HEAD.",
+      "default": true
+    },
+    "showModel": {
+      "type": "boolean",
+      "title": "Show the model",
+      "description": "The model the session is using, as /model shows it.",
+      "default": true
+    },
+    "showContext": {
+      "type": "boolean",
+      "title": "Show the context usage",
+      "description": "The percentage of the context window in use.",
+      "default": true
+    }
+  }
+}

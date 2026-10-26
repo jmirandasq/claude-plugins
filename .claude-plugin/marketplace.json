@@ -1,0 +1,17 @@
+{
+  "name": "jmirandasq",
+  "description": "Plugins de Claude Code",
+  "owner": { "name": "jmirandasq" },
+  "plugins": [
+    {
+      "name": "usage-meter",
+      "source": "./plugins/usage-meter",
+      "description": "Consumo de la suscripción de Claude Code (ventanas de 5 horas y semanal) en el pie del prompt."
+    },
+    {
+      "name": "session-info",
+      "source": "./plugins/session-info",
+      "description": "Proyecto, rama de git, modelo y uso del contexto en una línea sobre el prompt de Claude Code."
+    }
+  ]
+}

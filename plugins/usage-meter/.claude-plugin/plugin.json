@@ -1,0 +1,19 @@
+{
+  "name": "usage-meter",
+  "version": "0.1.0",
+  "description": "Claude Code subscription usage at the bottom right: the 5-hour and weekly windows.",
+  "author": {
+    "name": "jmirandasq"
+  },
+  "license": "MIT",
+  "keywords": ["usage", "subscription", "rate-limits", "status", "mod"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "hideCycleHint": {
+      "type": "boolean",
+      "title": "Hide the mode cycle hint",
+      "description": "Drop \"(shift+tab to cycle)\" after the permission mode, to leave room for the meter.",
+      "default": true
+    }
+  }
+}
