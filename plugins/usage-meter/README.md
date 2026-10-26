@@ -40,7 +40,7 @@ En `/config`, la fila **Position** del plugin:
 | `footer` | En la línea bajo el prompt, a la derecha, después del modo de permisos. |
 | `hint` | Al final de las ayudas bajo el prompt (`? for shortcuts`). |
 
-En las tres posiciones se ve igual, con sus colores. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
+En las tres posiciones se ve igual, con sus colores. Se adapta al ancho de la terminal: cada pieza es un bloque que nunca se parte, y cuando no cabe pasa entera a la línea siguiente. Con menos de 80 columnas, la barra se acorta a 5 celdas. Si `session-info` y `usage-meter` eligen la misma posición, se muestran los dos.
 
 ## Instalación
 

@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, SessionRateLimit } from 'claude-code'
+import type { EngineInterface, Register, RenderChildren, SessionRateLimit } from 'claude-code'
 
 import type { Limit } from '../types'
 
@@ -10,6 +10,7 @@ const WINDOWS = ['five_hour', 'seven_day']
 const LABELS: Record<string, string> = { five_hour: '5h', seven_day: 'week' }
 const ROTATE_MS = 8000
 const CELLS = 10
+const NARROW = 80
 const CYCLE_HINT = /\s*\([^()]+ to cycle\)/
 
 /** The subscription windows the meter shows, in order, from what the engine measured. */
@@ -51,7 +52,7 @@ type Position = 'above' | 'footer' | 'hint'
 const POSITIONS: readonly string[] = ['above', 'footer', 'hint']
 
 /** The window on show, ready to draw. */
-type Meter = { label: string; percent: number; filled: number; resetsIn?: string }
+type Meter = { label: string; percent: number; resetsIn?: string }
 
 /** Whether a tree beneath draws any text of its own (a plugin's), as opposed to the engine's empty slot. */
 const hasText = (node: unknown): boolean =>
@@ -73,23 +74,45 @@ async function meterOf ($: EngineInterface): Promise<Meter | null> {
   return {
     label: LABELS[shown.kind] ?? shown.kind,
     percent,
-    filled: Math.round((Math.min(Math.max(percent, 0), 100) / 100) * CELLS),
     resetsIn: resetsIn !== undefined && !hasReset ? until(resetsIn) : undefined
   }
 }
 
-/** The meter as a styled row, for the band and the footer. */
-function treeOf (meter: Meter, accent: string, { Box, Text }: ReturnType<EngineInterface['ui']['resolve']>) {
-  return (
-    <Box flexDirection="row">
+/** A narrow screen gets a shorter bar. */
+const cellsFor = (columns: number | undefined) => (columns !== undefined && columns < NARROW ? CELLS / 2 : CELLS)
+
+type Ui = ReturnType<EngineInterface['ui']['resolve']>
+
+/**
+ * The meter as blocks that never break inside, the bar and the time until it resets: on a narrow screen
+ * a whole block moves to the next line. `lead` puts a separator before the bar, for blocks that follow something else.
+ */
+function blocksOf (meter: Meter, accent: string, cells: number, lead: boolean, { Box, Text }: Ui) {
+  const filled = Math.round((Math.min(Math.max(meter.percent, 0), 100) / 100) * cells)
+  return [
+    <Box key="meter" flexDirection="row" flexShrink={0}>
+      {lead ? <Text dimColor> · </Text> : null}
       <Text dimColor>{meter.label} </Text>
-      <Text color={colorFor(meter.percent, accent)}>{'━'.repeat(meter.filled)}</Text>
-      <Text dimColor>{'─'.repeat(CELLS - meter.filled)}</Text>
+      <Text color={colorFor(meter.percent, accent)}>{'━'.repeat(filled)}</Text>
+      <Text dimColor>{'─'.repeat(cells - filled)}</Text>
       <Text> {Math.round(meter.percent)}%</Text>
-      {meter.resetsIn ? <Text dimColor> · {meter.resetsIn}</Text> : null}
-    </Box>
-  )
+    </Box>,
+    meter.resetsIn
+      ? <Box key="resets" flexDirection="row" flexShrink={0}><Text dimColor> · {meter.resetsIn}</Text></Box>
+      : null
+  ].filter(block => block !== null)
 }
+
+/** What another plugin or the engine drew before, as blocks: a wrapping row's own children, so both wrap as one line. */
+const blocksBefore = (node: RenderChildren): RenderChildren[] => {
+  const row = node as { type?: string; props?: Record<string, unknown>; children?: RenderChildren }
+  return row !== null && typeof row === 'object' && row.type === 'Box' && row.props?.flexWrap === 'wrap' && Array.isArray(row.children)
+    ? row.children
+    : [node]
+}
+
+/** One line that wraps by blocks. */
+const rowOf = ({ Box }: Ui, children: RenderChildren[]) => <Box flexDirection="row" flexWrap="wrap">{children}</Box>
 
 export const register: Register = (on, options) => {
   const hideCycleHint = options.hideCycleHint !== false
@@ -121,11 +144,11 @@ export const register: Register = (on, options) => {
       const meter = await meterOf($)
       if (e.props.hasSurvey || meter === null) return next(e)
 
-      const tree = treeOf(meter, accent, $.ui.resolve(e))
+      const ui = $.ui.resolve(e)
+      const row = rowOf(ui, blocksOf(meter, accent, cellsFor(e.viewport?.columns), false, ui))
       const below = await next(e)
-      if (!hasText(below)) return tree
-      const { Box } = $.ui.resolve(e)
-      return <Box flexDirection="column">{tree}{below}</Box>
+      if (!hasText(below)) return row
+      return <ui.Box flexDirection="column">{row}{below}</ui.Box>
     })
   }
 
@@ -135,17 +158,11 @@ export const register: Register = (on, options) => {
       const meter = await meterOf($)
       if (meter === null) return next(e)
 
-      const tree = treeOf(meter, accent, $.ui.resolve(e))
+      const ui = $.ui.resolve(e)
+      const cells = cellsFor(e.viewport?.columns)
       const labels = await next(e)
-      if (e.props.modes.length === 0 && !hasText(labels)) return tree
-      const { Box, Text } = $.ui.resolve(e)
-      return (
-        <Box flexDirection="row">
-          {labels}
-          <Text dimColor> · </Text>
-          {tree}
-        </Box>
-      )
+      if (e.props.modes.length === 0 && !hasText(labels)) return rowOf(ui, blocksOf(meter, accent, cells, false, ui))
+      return rowOf(ui, [...blocksBefore(labels), ...blocksOf(meter, accent, cells, true, ui)])
     })
   }
 
@@ -167,16 +184,10 @@ export const register: Register = (on, options) => {
       const line = await next(hasHint ? { ...e, props: { ...rest, hint } } : e)
       if (meter === null) return line
 
-      const tree = treeOf(meter, accent, $.ui.resolve(e))
-      if (!hint && !hasText(line)) return tree
-      const { Box, Text } = $.ui.resolve(e)
-      return (
-        <Box flexDirection="row">
-          {line}
-          <Text dimColor> · </Text>
-          {tree}
-        </Box>
-      )
+      const ui = $.ui.resolve(e)
+      const cells = cellsFor(e.viewport?.columns)
+      if (!hint && !hasText(line)) return rowOf(ui, blocksOf(meter, accent, cells, false, ui))
+      return rowOf(ui, [...blocksBefore(line), ...blocksOf(meter, accent, cells, true, ui)])
     })
   }
 }

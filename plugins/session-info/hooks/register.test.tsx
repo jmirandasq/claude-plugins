@@ -3,6 +3,9 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On, SessionContextUsage } from 'claude-code'
 
+/** A hint the engine below draws as a wrapping row of two parts, as another plugin in the hint position would. */
+const WRAPPED = 'wrapped row'
+
 type Git = Record<string, { exitCode: number; stdout: string }>
 
 /** Everything beneath the mod: the clock, the session's directory and model, git, its usage and what the engine draws. */
@@ -25,6 +28,9 @@ function world (on: On, git: Git, context: SessionContextUsage = { window: 200_0
   })
   on('ui.render', ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
+    if ('hint' in e.props && e.props.hint === WRAPPED) {
+      return <Box flexDirection="row" flexWrap="wrap"><Text>mode</Text><Text>other plugin</Text></Box>
+    }
     return 'hint' in e.props ? <Text>{`${e.props.hint}|${('tail' in e.props && e.props.tail) || ''}`}</Text> : <Box key="engine" />
   })
   return { clock, state }
@@ -139,4 +145,23 @@ test('a status position kept from 0.3.0 falls back to the band and unpins the li
   await startSession($)
   expect(await has(await footer($), 'claude-plugins')).toBe(true)
   expect(pinned).toEqual([undefined])
+})
+
+test('wraps by whole blocks, joining a wrapping row drawn before into one line', { options: { position: 'hint' } }, async ($, on) => {
+  world(on, MAIN)
+  await startSession($)
+  const ui = await mountAt($, 'PromptHint', { isDraft: false, isWorking: false, hint: WRAPPED })
+  const row = await ui.drawn() as { type: string; props?: Record<string, unknown>; children?: Array<{ type: string; props?: Record<string, unknown> }> }
+  expect(row.props?.flexWrap).toBe('wrap')
+  expect(row.children?.length).toBe(6)
+  expect(row.children?.slice(2).every(block => block.type === 'Box' && block.props?.flexShrink === 0)).toBe(true)
+})
+
+test('draws a shorter bar on a narrow screen', async ($, on) => {
+  world(on, MAIN)
+  await startSession($)
+  const ui = await $.ui.mount({ plugin: 'session-info', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false } as never, viewport: { columns: 60, rows: 30 } } as never)
+  expect(await has(ui, '━━')).toBe(true)
+  expect(await has(ui, '───')).toBe(true)
+  expect(await has(ui, '──────')).toBe(false)
 })

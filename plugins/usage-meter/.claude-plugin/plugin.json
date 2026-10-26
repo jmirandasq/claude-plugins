@@ -1,6 +1,6 @@
 {
   "name": "usage-meter",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Claude Code subscription usage at the bottom right: the 5-hour and weekly windows.",
   "author": {
     "name": "jmirandasq"

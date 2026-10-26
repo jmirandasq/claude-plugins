@@ -166,3 +166,21 @@ test('a status position kept from 0.3.0 falls back to the footer and unpins the 
   expect(await (await footer($)).find({ type: 'Text', text: ' 58%' })).toBeDefined()
   expect(w.pinned).toEqual([undefined])
 })
+
+test('wraps by whole blocks, the bar and the time until it resets', async ($, on) => {
+  world(on)
+  await startSession($)
+  const ui = await footer($, ['focus'])
+  const row = await ui.drawn() as { props?: Record<string, unknown>; children?: Array<{ type: string; props?: Record<string, unknown> }> }
+  expect(row.props?.flexWrap).toBe('wrap')
+  expect(row.children?.slice(-2).every(block => block.type === 'Box' && block.props?.flexShrink === 0)).toBe(true)
+})
+
+test('draws a shorter bar on a narrow screen', async ($, on) => {
+  world(on)
+  await startSession($)
+  const ui = await $.ui.mount({ plugin: 'usage-meter', surface: 'terminal', component: 'SessionMode', props: { modes: [] }, viewport: { columns: 60, rows: 30 } } as never)
+  expect(await ui.find({ type: 'Text', text: '━━━' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '──' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '━━━━━━' })).toBeUndefined()
+})

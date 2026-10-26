@@ -18,6 +18,7 @@ const ACCENTS: Record<string, string> = {
 }
 
 const CELLS = 10
+const NARROW = 80
 const colorFor = (percent: number, accent: string) => (percent >= 90 ? 'error' : percent >= 75 ? 'warning' : accent)
 
 /** "claude-plugins" from "/Users/me/work/claude-plugins". */
@@ -88,28 +89,45 @@ function piecesOf (found: Info, view: View) {
   return { pieces, percent }
 }
 
-/** The line as a styled tree, for the band and the footer; null with nothing to show. */
-function treeOf (found: Info | null, view: View, { Box, Text }: ReturnType<EngineInterface['ui']['resolve']>) {
-  if (found === null) return null
+/** A narrow screen gets a shorter bar. */
+const cellsFor = (columns: number | undefined) => (columns !== undefined && columns < NARROW ? CELLS / 2 : CELLS)
+
+type Ui = ReturnType<EngineInterface['ui']['resolve']>
+
+/**
+ * The info as blocks that never break inside: on a narrow screen a whole block moves to the next line.
+ * `lead` puts a separator before the first block too, for blocks that follow something else.
+ */
+function blocksOf (found: Info | null, view: View, cells: number, lead: boolean, { Box, Text }: Ui) {
+  if (found === null) return []
   const { pieces, percent } = piecesOf(found, view)
   const parts: Array<[string, RenderChildren]> = pieces.map(piece => [piece.key, <Text {...piece.style}>{piece.text}</Text>])
   if (percent !== undefined) {
-    const filled = Math.round((percent / 100) * CELLS)
-    parts.push(['context', (
-      <Box flexDirection="row">
-        <Text color={colorFor(percent, view.accent)}>{'━'.repeat(filled)}</Text>
-        <Text dimColor>{'─'.repeat(CELLS - filled)}</Text>
-        <Text> {Math.round(percent)}%</Text>
-      </Box>
-    )])
+    const filled = Math.round((percent / 100) * cells)
+    parts.push(['context', [
+      <Text color={colorFor(percent, view.accent)}>{'━'.repeat(filled)}</Text>,
+      <Text dimColor>{'─'.repeat(cells - filled)}</Text>,
+      <Text> {Math.round(percent)}%</Text>
+    ]])
   }
-  if (parts.length === 0) return null
-  return (
-    <Box flexDirection="row">
-      {parts.flatMap(([key, part], i) => (i === 0 ? [part] : [<Text key={`${key}-sep`} dimColor> · </Text>, part]))}
+  return parts.map(([key, part], i) => (
+    <Box key={key} flexDirection="row" flexShrink={0}>
+      {i > 0 || lead ? <Text dimColor> · </Text> : null}
+      {part}
     </Box>
-  )
+  ))
 }
+
+/** What another plugin or the engine drew before, as blocks: a wrapping row's own children, so both wrap as one line. */
+const blocksBefore = (node: RenderChildren): RenderChildren[] => {
+  const row = node as { type?: string; props?: Record<string, unknown>; children?: RenderChildren }
+  return row !== null && typeof row === 'object' && row.type === 'Box' && row.props?.flexWrap === 'wrap' && Array.isArray(row.children)
+    ? row.children
+    : [node]
+}
+
+/** One line that wraps by blocks. */
+const rowOf = ({ Box }: Ui, children: RenderChildren[]) => <Box flexDirection="row" flexWrap="wrap">{children}</Box>
 
 export const register: Register = (on, options) => {
   const view: View = {
@@ -139,51 +157,41 @@ export const register: Register = (on, options) => {
   if (position === 'above') {
     on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
       if (e.props.hasSurvey) return next(e)
-      const tree = treeOf(await read($, info), view, $.ui.resolve(e))
-      if (tree === null) return next(e)
+      const ui = $.ui.resolve(e)
+      const blocks = blocksOf(await read($, info), view, cellsFor(e.viewport?.columns), false, ui)
+      if (blocks.length === 0) return next(e)
 
       const below = await next(e)
-      if (!hasText(below)) return tree
-      const { Box } = $.ui.resolve(e)
-      return <Box flexDirection="column">{tree}{below}</Box>
+      if (!hasText(below)) return rowOf(ui, blocks)
+      return <ui.Box flexDirection="column">{rowOf(ui, blocks)}{below}</ui.Box>
     })
   }
 
   // The footer's right side: the engine's mode labels (and any other plugin's part), then the info.
   if (position === 'footer') {
     on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
-      const tree = treeOf(await read($, info), view, $.ui.resolve(e))
-      if (tree === null) return next(e)
+      const found = await read($, info)
+      const ui = $.ui.resolve(e)
+      const cells = cellsFor(e.viewport?.columns)
+      if (blocksOf(found, view, cells, false, ui).length === 0) return next(e)
 
       const before = await next(e)
-      if (e.props.modes.length === 0 && !hasText(before)) return tree
-      const { Box, Text } = $.ui.resolve(e)
-      return (
-        <Box flexDirection="row">
-          {before}
-          <Text dimColor> · </Text>
-          {tree}
-        </Box>
-      )
+      if (e.props.modes.length === 0 && !hasText(before)) return rowOf(ui, blocksOf(found, view, cells, false, ui))
+      return rowOf(ui, [...blocksBefore(before), ...blocksOf(found, view, cells, true, ui)])
     })
   }
 
   // The end of the hint line under the prompt: the engine's line as drawn (and any other plugin's part), then the info in its colors.
   if (position === 'hint') {
     on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
-      const tree = treeOf(await read($, info), view, $.ui.resolve(e))
-      if (tree === null || !('isDraft' in e.props)) return next(e)
+      const found = await read($, info)
+      const ui = $.ui.resolve(e)
+      const cells = cellsFor(e.viewport?.columns)
+      if (!('isDraft' in e.props) || blocksOf(found, view, cells, false, ui).length === 0) return next(e)
 
       const line = await next(e)
-      if (!e.props.hint.trim() && !hasText(line)) return tree
-      const { Box, Text } = $.ui.resolve(e)
-      return (
-        <Box flexDirection="row">
-          {line}
-          <Text dimColor> · </Text>
-          {tree}
-        </Box>
-      )
+      if (!e.props.hint.trim() && !hasText(line)) return rowOf(ui, blocksOf(found, view, cells, false, ui))
+      return rowOf(ui, [...blocksBefore(line), ...blocksOf(found, view, cells, true, ui)])
     })
   }
 }
